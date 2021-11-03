@@ -1,0 +1,231 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>【Vue】浅谈 Vue 的 diff 算法（未完成） | 梧木栖凰</title><meta name="keywords" content="Vue"><meta name="author" content="Even Weiss,ysx313629@163.com"><meta name="copyright" content="Even Weiss"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="前言diff 是 Vue 执行种的一个重要过程，是深入学习 Vue 时不容忽视的部分。 本篇文章暂时仅分析 Vue2 的 diff 基本原理，后续考虑补充源码分析和其他框架，如 React、Vue3 的 diff 相关内容，视情况而定。 是什么在学习 Diff 算法之前，我们需要先了解几个概念。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【Vue】浅谈 Vue 的 diff 算法（未完成）">
+<meta property="og:url" content="https://evenweiss.github.io/2021-06-29-vue-diff/index.html">
+<meta property="og:site_name" content="梧木栖凰">
+<meta property="og:description" content="前言diff 是 Vue 执行种的一个重要过程，是深入学习 Vue 时不容忽视的部分。 本篇文章暂时仅分析 Vue2 的 diff 基本原理，后续考虑补充源码分析和其他框架，如 React、Vue3 的 diff 相关内容，视情况而定。 是什么在学习 Diff 算法之前，我们需要先了解几个概念。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/evenweiss/cdn@latest/images/vue.jpg">
+<meta property="article:published_time" content="2021-06-29T03:15:46.000Z">
+<meta property="article:modified_time" content="2021-10-28T02:33:09.992Z">
+<meta property="article:author" content="Even Weiss">
+<meta property="article:tag" content="Vue">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/evenweiss/cdn@latest/images/vue.jpg"><link rel="shortcut icon" href="/images/avatar.jpg"><link rel="canonical" href="https://evenweiss.github.io/2021-06-29-vue-diff/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: {"defaultEncoding":1,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Even Weiss","link":"链接: ","source":"来源: 梧木栖凰","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#121212","position":"top-left"},
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '【Vue】浅谈 Vue 的 diff 算法（未完成）',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-10-28 10:33:09'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if (GLOBAL_CONFIG_SITE.isHome && /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/evenweiss/cdn@latest/styles/blog-butterfly-modify.min.css"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="梧木栖凰" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/images/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">12</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa-fw fas fa-compass"></i><span> 目录</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa-fw fa fa-heartbeat"></i><span> 娱乐</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/gallery/"><i class="fa-fw fa-fw fas fa-images"></i><span> 图库</span></a></li><li><a class="site-page child" href="/melody/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 电影</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/messageboard/"><i class="fa-fw fa-fw fas fa-comment-dots"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">梧木栖凰</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa-fw fas fa-compass"></i><span> 目录</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa-fw fa fa-heartbeat"></i><span> 娱乐</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/gallery/"><i class="fa-fw fa-fw fas fa-images"></i><span> 图库</span></a></li><li><a class="site-page child" href="/melody/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 电影</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/messageboard/"><i class="fa-fw fa-fw fas fa-comment-dots"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">【Vue】浅谈 Vue 的 diff 算法（未完成）</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-06-29T03:15:46.000Z" title="发表于 2021-06-29 11:15:46">2021-06-29</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-10-28T02:33:09.992Z" title="更新于 2021-10-28 10:33:09">2021-10-28</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Developer/">Developer</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Developer/Frame/">Frame</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Developer/Frame/Vue/">Vue</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="【Vue】浅谈 Vue 的 diff 算法（未完成）"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div><article class="post-content" id="article-container"><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>diff 是 Vue 执行种的一个重要过程，是深入学习 Vue 时不容忽视的部分。</p>
+<p>本篇文章暂时仅分析 Vue2 的 diff 基本原理，后续考虑补充源码分析和其他框架，如 React、Vue3 的 diff 相关内容，视情况而定。</p>
+<h2 id="是什么"><a href="#是什么" class="headerlink" title="是什么"></a>是什么</h2><p>在学习 Diff 算法之前，我们需要先了解几个概念。</p>
+<span id="more"></span>
+
+<h3 id="1-Virtual-DOM"><a href="#1-Virtual-DOM" class="headerlink" title="1. Virtual DOM"></a>1. Virtual DOM</h3><p>虚拟 DOM（Virtual DOM）是一种将浏览器 DOM 的信息存储在 JavaScript 内存中的方法，是以 JavaScript 对象表示的抽象化的 DOM。</p>
+<p>相比于操作 DOM，通过 JavaScript 操作 Virtual DOM 的开销要小得多。</p>
+<h3 id="2-VNode"><a href="#2-VNode" class="headerlink" title="2. VNode"></a>2. VNode</h3><p>Virtual DOM 为 DOM 的抽象表示。相同的，VNode 就是是 DOM 节点的抽象表示，是 Virtual DOM 的节点。</p>
+<p>VNode 同样也是一个 JavaScript 对象，包括这个 DOM 节点的所有属性内容。</p>
+<h3 id="3-AST"><a href="#3-AST" class="headerlink" title="3. AST"></a>3. AST</h3><p>AST（Abstract Syntax Tree），即抽象语法树，是源代码语法结构的一种抽象表示（树状形式）。树上的每个节点均代表源代码的一种结构。</p>
+<hr>
+<p>Vue 通过编译将模板转换为 AST ，再将 AST 转换为渲染函数，执行渲染函数得到新的 VNode，将其与旧的 VNode 比对，对更改的部分进行更新、替换，最后渲染到页面上。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2020/3/31/171302f6d4189378?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt="渲染流程"></p>
+<p>这个比对新旧 VNode，并进行更新、替换的过程就是 diff 的过程。diff 的结果是得到一个新的 VNode 树，用于页面渲染。</p>
+<h2 id="为什么"><a href="#为什么" class="headerlink" title="为什么"></a>为什么</h2><p>我们不妨设想一下不进行 Diff 的情况。这种情况下我们每次更新页面数据，都需要对页面整体的 DOM 进行渲染，这个消耗是非常大的。</p>
+<p>而 Diff 的作用，就是找到新旧 DOM 的最小差异，尽量减少更新量，最大程度地降低渲染消耗。</p>
+<p>那么，Vue 使用 Diff 的理由也就显而易见了，就是为了减少性能消耗。</p>
+<h2 id="基本逻辑"><a href="#基本逻辑" class="headerlink" title="基本逻辑"></a>基本逻辑</h2><p>传统的 Diff 算法会递归处理每一个节点，计算量非常大。</p>
+<blockquote>
+<p>将两颗树中所有的节点一一对比需要 O(n²)的复杂度，在对比过程中发现旧节点在新的树中未找到，那么就需要把旧节点删除，删除一棵树的一个节点(找到一个合适的节点放到被删除的位置)的时间复杂度为 O(n),同理添加新节点的复杂度也是 O(n),合起来 diff 两个树的复杂度就是 O(n³)</p>
+</blockquote>
+<p>而 React 和 Vue2 的 diff 算法规则大致相同，仅在同级的 VNode 之间做比较计算，递归进行，最终实现整个 DOM 树的更新。</p>
+<p><img src="/2021-06-29-vue-diff/1.png" alt="出自《React’s diff algorithm》"></p>
+<p>diff 算法一般包括几个主要的逻辑，以 3 层嵌套的 DOM 为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// 简化vdom结构如下</span><br><span class="line">&#123;</span><br><span class="line">  name: &#x27;root&#x27;,</span><br><span class="line">  children: [</span><br><span class="line">    &#123;</span><br><span class="line">      name: &#x27;branch-A&#x27;,</span><br><span class="line">      children: [&#123; name: &#x27;leaf-A-1&#x27;, children: [] &#125;],</span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      name: &#x27;branch-B&#x27;,</span><br><span class="line">      children: [],</span><br><span class="line">    &#125;,</span><br><span class="line">  ],</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>图示如下</p>
+<p><img src="/2021-06-29-vue-diff/A.png" alt="base"></p>
+<h3 id="1-不同节点类型的比较"><a href="#1-不同节点类型的比较" class="headerlink" title="1. 不同节点类型的比较"></a>1. 不同节点类型的比较</h3><p>我们想在二级节点 branch-A 下追加一个三级子节点 leaf-A-2，如下图所示：</p>
+<p><img src="/2021-06-29-vue-diff/B.png" alt="B"></p>
+<p>这种情况仅生成节点 leaf-A-2 并插入到 branch-A 的子节点列表。</p>
+<h3 id="2-删除节点"><a href="#2-删除节点" class="headerlink" title="2. 删除节点"></a>2. 删除节点</h3><h3 id="3-更新节点"><a href="#3-更新节点" class="headerlink" title="3. 更新节点"></a>3. 更新节点</h3><h3 id="Key-的作用"><a href="#Key-的作用" class="headerlink" title="Key 的作用"></a>Key 的作用</h3><hr>
+<hr>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><blockquote>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000016129036">你不知道的 Virtual DOM（一）</a></li>
+<li><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s?__biz=MzUxNjQ1NjMwNw==&mid=2247484442&idx=1&sn=26143f93c79390947920a8dc7b84bd14&chksm=f9a66e06ced1e71009a1aacfa134348f3b1e6a2e95a982b09fa2ad5559791650d84aad5eaeb9&token=681836850&lang=zh_CN#rd">【Vue 原理】Diff - 白话版</a></li>
+<li><a target="_blank" rel="noopener" href="https://juejin.cn/post/6844904111117336590">《Vue 不看源码懂原理》系列——Vue 的 diff 算法不难懂</a></li>
+<li><a target="_blank" rel="noopener" href="https://juejin.cn/post/6854573217462534151">通俗易懂的 vue 虚拟（Virtual ）DOM 和 diff 算法</a></li>
+<li><a target="_blank" rel="noopener" href="https://time.geekbang.org/course/detail/100024601-86448">极客时间 《Vue 开发实战 10 | 理解虚拟 DOM 及 key 属性的作用》</a></li>
+<li><a target="_blank" rel="noopener" href="https://juejin.cn/post/6966412425843343373">Vue2 Diff 算法深入解读</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.infoq.cn/article/react-dom-diff/">深入浅出 React（四）：虚拟 DOM Diff 算法解析</a></li>
+<li><a target="_blank" rel="noopener" href="https://juejin.cn/post/6844904145879564296">聊一聊 Diff 算法（React、Vue2.x、Vue3.x）</a></li>
+</ol>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:ysx313629@163.com">Even Weiss</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://evenweiss.github.io/2021-06-29-vue-diff/">https://evenweiss.github.io/2021-06-29-vue-diff/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://evenweiss.github.io" target="_blank">梧木栖凰</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Vue/">Vue</a></div><div class="post_share"><div class="social-share" data-image="https://cdn.jsdelivr.net/gh/evenweiss/cdn@latest/images/vue.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button button--animated"><i class="fas fa-qrcode"></i> 打赏</div><div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/images/sponsor/wechat.jpg" target="_blank"><img class="post-qr-code-img" src="/images/sponsor/wechat.jpg" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="/images/sponsor/alipay.jpg" target="_blank"><img class="post-qr-code-img" src="/images/sponsor/alipay.jpg" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2021-06-30-achive-promise/"><img class="prev-cover" src="https://cdn.jsdelivr.net/gh/evenweiss/cdn@latest/images/promise.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">【JavaScript】手写 Promise 的一次完整尝试（未完成）</div></div></a></div><div class="next-post pull-right"><a href="/2021-06-23-interface-type/"><img class="next-cover" src="https://cdn.jsdelivr.net/gh/evenweiss/cdn@latest/images/typescript.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">【TypeScript】interface 与 type 的区别</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021-11-02-vue-optimization-primary/" title="【Vue】性能优化初探"><img class="cover" src="https://static001.infoq.cn/resource/image/eb/04/eb4060417e28326fd98526db1afeba04.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-11-02</div><div class="title">【Vue】性能优化初探</div></div></a></div></div></div><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="waline-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Even Weiss</div><div class="author-info__description">Weiss 的技术向个人博客</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">12</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/evenweiss"><i class="fab fa-github"></i><span>Github</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://weibo.com/7thRabbit" target="_blank" title="Weibo"><i class="fab fa-weibo"></i></a><a class="social-icon" href="mailto:ysx313629@163.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a><a class="social-icon" href="/atom.xml" target="_blank" title="RSS"><i class="fas fa-rss"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog, friend!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">是什么</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-Virtual-DOM"><span class="toc-text">1. Virtual DOM</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-VNode"><span class="toc-text">2. VNode</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-AST"><span class="toc-text">3. AST</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88"><span class="toc-text">为什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E9%80%BB%E8%BE%91"><span class="toc-text">基本逻辑</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%B8%8D%E5%90%8C%E8%8A%82%E7%82%B9%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%AF%94%E8%BE%83"><span class="toc-text">1. 不同节点类型的比较</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%88%A0%E9%99%A4%E8%8A%82%E7%82%B9"><span class="toc-text">2. 删除节点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%9B%B4%E6%96%B0%E8%8A%82%E7%82%B9"><span class="toc-text">3. 更新节点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Key-%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="toc-text">Key 的作用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83"><span class="toc-text">参考</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021-11-02-vue-optimization-primary/" title="【Vue】性能优化初探"><img src="https://static001.infoq.cn/resource/image/eb/04/eb4060417e28326fd98526db1afeba04.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="【Vue】性能优化初探"/></a><div class="content"><a class="title" href="/2021-11-02-vue-optimization-primary/" title="【Vue】性能优化初探">【Vue】性能优化初探</a><time datetime="2021-11-02T15:53:49.000Z" title="发表于 2021-11-02 23:53:49">2021-11-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021-10-20-flex-basis/" title="【CSS】如何理解 flex-basis ？"><img src="https://www.ruanyifeng.com/blogimg/asset/2015/bg2015071002.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="【CSS】如何理解 flex-basis ？"/></a><div class="content"><a class="title" href="/2021-10-20-flex-basis/" title="【CSS】如何理解 flex-basis ？">【CSS】如何理解 flex-basis ？</a><time datetime="2021-10-20T07:49:42.000Z" title="发表于 2021-10-20 15:49:42">2021-10-20</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021-08-02-blog-building/" title="Hexo + GitHub Pages 搭建个人博客"><img src="/2021-08-02-blog-building/cover.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Hexo + GitHub Pages 搭建个人博客"/></a><div class="content"><a class="title" href="/2021-08-02-blog-building/" title="Hexo + GitHub Pages 搭建个人博客">Hexo + GitHub Pages 搭建个人博客</a><time datetime="2021-08-02T08:37:59.000Z" title="发表于 2021-08-02 16:37:59">2021-08-02</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2021 By Even Weiss</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Oh, friend! Welcome to my blog!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">簡</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><script src="/js/search/local-search.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',preloader.endLoading())</script><div class="js-pjax"><script>function loadWaline () {
+  function initWaline () {
+    const waline = new Waline(Object.assign({
+      el: '#waline-wrap',
+      serverURL: 'https://waline-api-sepia.vercel.app',
+      avatar: 'retro',
+      avatarCDN: 'https://sdn.geekzu.org/avatar/',
+      path: location.pathname,
+      visitor: false,
+      dark: 'html[data-theme="dark"]'
+    }, {"dark":"auto","emoji":["https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/weibo","https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili","https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/tw-emoji","https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq"]}))
+  }
+
+  if (typeof Waline === 'function') initWaline() 
+  else getScript('https://cdn.jsdelivr.net/npm/@waline/client/dist/Waline.min.js').then(initWaline)
+}
+
+if ('Waline' === 'Waline' || !true) {
+  if (true) btf.loadComment(document.getElementById('waline-wrap'),loadWaline)
+  else setTimeout(loadWaline, 0)
+} else {
+  function loadOtherComment () {
+    loadWaline()
+  }
+}</script></div><script defer="defer" id="fluttering_ribbon" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
